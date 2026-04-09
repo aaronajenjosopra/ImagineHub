@@ -1,0 +1,121 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "System user with gamification points",
+      "type": "object",
+      "properties": {
+        "firebaseUid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "points": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["firebaseUid", "email", "points", "createdAt"]
+    },
+    "Initiative": {
+      "title": "Initiative",
+      "description": "A cross-functional project",
+      "type": "object",
+      "properties": {
+        "nombre": { "type": "string" },
+        "descripcion": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["nombre", "descripcion", "createdBy", "createdAt"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "A task within an initiative",
+      "type": "object",
+      "properties": {
+        "titulo": { "type": "string" },
+        "descripcion": { "type": "string" },
+        "estado": { "type": "string", "enum": ["todo", "in_progress", "done"] },
+        "iniciativaId": { "type": "string" },
+        "creadorId": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["titulo", "estado", "iniciativaId", "creadorId", "tags", "createdAt", "updatedAt"]
+    },
+    "Session": {
+      "title": "Session",
+      "description": "A global calendar event",
+      "type": "object",
+      "properties": {
+        "titulo": { "type": "string" },
+        "descripcion": { "type": "string" },
+        "fechaInicio": { "type": "string", "format": "date-time" },
+        "fechaFin": { "type": "string", "format": "date-time" },
+        "creadorId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["titulo", "fechaInicio", "fechaFin", "creadorId", "createdAt"]
+    },
+    "Post": {
+      "title": "Post",
+      "description": "A mailbox post for problems or ideas",
+      "type": "object",
+      "properties": {
+        "titulo": { "type": "string" },
+        "contenido": { "type": "string" },
+        "estado": { "type": "string", "enum": ["pendiente", "resuelto"] },
+        "solucionIA": { "type": "string" },
+        "creadorId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["titulo", "contenido", "estado", "creadorId", "createdAt"]
+    },
+    "Response": {
+      "title": "Response",
+      "description": "A response to a mailbox post",
+      "type": "object",
+      "properties": {
+        "contenido": { "type": "string" },
+        "postId": { "type": "string" },
+        "usuarioId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["contenido", "postId", "usuarioId", "createdAt"]
+    },
+    "V1Post": {
+      "title": "V1Post",
+      "description": "Weekly blog content",
+      "type": "object",
+      "properties": {
+        "titulo": { "type": "string" },
+        "contenido": { "type": "string" },
+        "creadorId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["titulo", "contenido", "creadorId", "createdAt", "updatedAt"]
+    },
+    "News": {
+      "title": "News",
+      "description": "Activity feed item",
+      "type": "object",
+      "properties": {
+        "titulo": { "type": "string" },
+        "descripcion": { "type": "string" },
+        "tipo": { "type": "string", "enum": ["iniciativa", "tarea", "sesion", "foro"] },
+        "referenciaId": { "type": "string" },
+        "usuarioId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["titulo", "tipo", "referenciaId", "usuarioId", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": { "schema": "User", "description": "User profiles" },
+    "/initiatives/{initiativeId}": { "schema": "Initiative", "description": "Company initiatives" },
+    "/initiatives/{initiativeId}/tasks/{taskId}": { "schema": "Task", "description": "Tasks for an initiative" },
+    "/sessions/{sessionId}": { "schema": "Session", "description": "Calendar sessions" },
+    "/mailbox/{postId}": { "schema": "Post", "description": "Mailbox posts" },
+    "/mailbox/{postId}/responses/{responseId}": { "schema": "Response", "description": "Responses to posts" },
+    "/v1imagine/{postId}": { "schema": "V1Post", "description": "V1 Imagine blog posts" },
+    "/news/{newsId}": { "schema": "News", "description": "Global activity feed" }
+  }
+}
