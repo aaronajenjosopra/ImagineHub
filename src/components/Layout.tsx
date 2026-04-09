@@ -41,8 +41,9 @@ export const Layout: React.FC = () => {
       {/* Sidebar */}
       <aside className="w-64 border-r border-zinc-100 flex flex-col p-4 bg-zinc-50/50">
         <div className="flex items-center gap-2 px-4 mb-8">
-          <div className="bg-zinc-900 text-white px-3 py-1 rounded-xl font-normal text-xl tracking-tight">Imagine</div>
-          <span className="text-xl font-bold tracking-tight">Hub</span>
+          <div className="bg-zinc-900 text-white px-3 py-1 rounded-xl font-normal text-xl tracking-tight">
+            Imagine <span className="font-bold">Hub</span>
+          </div>
         </div>
 
         <nav className="flex-1 flex flex-col gap-1">
