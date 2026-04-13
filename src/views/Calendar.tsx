@@ -3,7 +3,7 @@ import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, updateD
 import { db } from "../firebase";
 import { Session } from "../types";
 import { Calendar as CalendarIcon, Plus, Trash2, Edit2, Clock, MapPin, X } from "lucide-react";
-import { format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, isToday, parseISO } from "date-fns";
+import { format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, isToday, parseISO, startOfWeek, endOfWeek } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "../lib/utils";
 
@@ -81,7 +81,9 @@ export const CalendarView: React.FC = () => {
 
   const monthStart = startOfMonth(selectedDate);
   const monthEnd = endOfMonth(selectedDate);
-  const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
+  const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+  const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
+  const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
   return (
     <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -97,24 +99,28 @@ export const CalendarView: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-7 gap-px bg-zinc-100 border border-zinc-100 rounded-xl overflow-hidden shadow-sm">
-          {["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"].map(d => (
+          {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map(d => (
             <div key={d} className="bg-zinc-50 p-2 text-center text-[10px] font-bold uppercase tracking-widest text-zinc-400">{d}</div>
           ))}
           {days.map((day, idx) => {
             const daySessions = sessions.filter(s => isSameDay(new Date(s.fechaInicio), day));
+            const isCurrentMonth = day.getMonth() === selectedDate.getMonth();
+            
             return (
               <div 
                 key={idx} 
                 className={cn(
                   "bg-white min-h-[100px] p-2 transition-colors hover:bg-zinc-50/50 cursor-pointer",
-                  !isSameDay(day, selectedDate) && "text-zinc-400",
+                  !isCurrentMonth && "bg-zinc-50/30 text-zinc-300",
+                  isSameDay(day, selectedDate) && isCurrentMonth && "ring-1 ring-inset ring-zinc-200",
                   isToday(day) && "bg-blue-50/30"
                 )}
                 onClick={() => setSelectedDate(day)}
               >
                 <span className={cn(
                   "text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full mb-1",
-                  isToday(day) ? "bg-blue-600 text-white" : ""
+                  isToday(day) ? "bg-blue-600 text-white" : "",
+                  !isCurrentMonth && "opacity-50"
                 )}>
                   {format(day, "d")}
                 </span>
