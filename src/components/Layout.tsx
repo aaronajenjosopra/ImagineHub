@@ -9,6 +9,8 @@ import {
   Bell
 } from "lucide-react";
 import { cn } from "../lib/utils";
+import sopraLogo from "../assets/sopra_logo.png";
+import aerolineLogo from "../assets/aeroline.png";
 
 const SidebarItem = ({ to, icon: Icon, label, active }: { to: string, icon: any, label: string, active: boolean }) => (
   <Link
@@ -58,7 +60,7 @@ export const Layout: React.FC = () => {
 
         <div className="mt-auto pt-8 flex justify-center">
           <img 
-            src="/sopra_logo.png" 
+            src={sopraLogo} 
             alt="Sopra Steria Logo" 
             className="h-8 object-contain opacity-60 hover:opacity-100 transition-opacity"
             referrerPolicy="no-referrer"
@@ -80,7 +82,7 @@ export const Layout: React.FC = () => {
             <div className="flex items-center gap-3">
               <div className="w-24 h-24 flex items-center justify-center overflow-hidden">
                 <img 
-                  src="/aeroline.png" 
+                  src={aerolineLogo} 
                   alt="User Avatar" 
                   className="w-full h-full object-contain"
                   referrerPolicy="no-referrer"

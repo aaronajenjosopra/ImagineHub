@@ -10,6 +10,7 @@ import ReactMarkdown from "react-markdown";
 export const Imagine: React.FC = () => {
   const [posts, setPosts] = useState<V1Post[]>([]);
   const [showEditor, setShowEditor] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<V1Post | null>(null);
   const [newPost, setNewPost] = useState({ titulo: "", contenido: "" });
 
   useEffect(() => {
@@ -52,11 +53,11 @@ export const Imagine: React.FC = () => {
       </div>
 
       {showEditor && (
-        <div className="fixed inset-0 bg-white z-50 overflow-y-auto p-8">
+        <div className="fixed inset-0 bg-white z-50 overflow-y-auto p-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
           <div className="max-w-3xl mx-auto">
             <div className="flex justify-between items-center mb-12">
               <h3 className="text-2xl font-bold">Nuevo Artículo</h3>
-              <button onClick={() => setShowEditor(false)} className="text-zinc-500 hover:text-zinc-900 font-medium">Cerrar</button>
+              <button onClick={() => setShowEditor(false)} className="text-zinc-500 hover:text-zinc-900 font-medium bg-zinc-100 px-4 py-2 rounded-full transition-colors">Cerrar</button>
             </div>
             <form onSubmit={handleCreate} className="space-y-8">
               <input 
@@ -88,9 +89,65 @@ export const Imagine: React.FC = () => {
         </div>
       )}
 
+      {selectedPost && (
+        <div className="fixed inset-0 bg-white z-50 overflow-y-auto animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="sticky top-0 bg-white/80 backdrop-blur-md border-b border-zinc-100 z-10">
+            <div className="max-w-3xl mx-auto px-8 h-20 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <ImageIcon className="text-zinc-400" size={24} />
+                <span className="font-bold text-zinc-400 uppercase tracking-widest text-xs">Imagine Hub</span>
+              </div>
+              <button 
+                onClick={() => setSelectedPost(null)}
+                className="bg-zinc-100 text-zinc-900 px-6 py-2 rounded-full font-bold hover:bg-zinc-200 transition-all"
+              >
+                Cerrar lectura
+              </button>
+            </div>
+          </div>
+          
+          <article className="max-w-3xl mx-auto px-8 py-16">
+            <header className="mb-12">
+              <div className="flex items-center gap-3 text-zinc-400 text-sm font-bold uppercase tracking-widest mb-6">
+                <Clock size={16} />
+                <span>{format(new Date(selectedPost.createdAt), "d MMMM, yyyy", { locale: es })}</span>
+              </div>
+              <h1 className="text-6xl font-black tracking-tight leading-tight mb-8">{selectedPost.titulo}</h1>
+              <div className="aspect-video bg-zinc-100 rounded-[2rem] overflow-hidden shadow-2xl">
+                <img 
+                  src={`https://picsum.photos/seed/${selectedPost.id}/1200/800`} 
+                  alt={selectedPost.titulo}
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+            </header>
+            
+            <div className="prose prose-zinc prose-xl max-w-none">
+              <div className="text-zinc-600 leading-relaxed space-y-6">
+                <ReactMarkdown>{selectedPost.contenido}</ReactMarkdown>
+              </div>
+            </div>
+          </article>
+          
+          <footer className="max-w-3xl mx-auto px-8 py-16 border-t border-zinc-100">
+            <div className="bg-zinc-50 rounded-3xl p-8 text-center">
+              <h4 className="font-bold text-xl mb-2">¿Te ha gustado este artículo?</h4>
+              <p className="text-zinc-500 mb-6">Comparte tus impresiones en el buzón de sugerencias.</p>
+              <button 
+                onClick={() => setSelectedPost(null)}
+                className="text-zinc-900 font-bold hover:underline"
+              >
+                Volver al Hub
+              </button>
+            </div>
+          </footer>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
         {posts.map((post) => (
-          <div key={post.id} className="group cursor-pointer">
+          <div key={post.id} className="group cursor-pointer" onClick={() => setSelectedPost(post)}>
             <div className="aspect-video bg-zinc-100 rounded-3xl mb-6 overflow-hidden relative">
               <img 
                 src={`https://picsum.photos/seed/${post.id}/800/600`} 

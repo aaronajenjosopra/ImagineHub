@@ -10,6 +10,7 @@ export interface Initiative {
   id: string;
   nombre: string;
   descripcion: string;
+  responsable?: string;
   createdBy: string;
   estado?: "active" | "closed";
   createdAt: string;

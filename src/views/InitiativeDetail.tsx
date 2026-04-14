@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { doc, collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, orderBy } from "firebase/firestore";
 import { db } from "../firebase";
 import { Initiative, Task } from "../types";
-import { Plus, Sparkles, ChevronLeft, Trash2, Loader2, Pencil, Lock, Unlock } from "lucide-react";
+import { Plus, Sparkles, ChevronLeft, Trash2, Loader2, Pencil, Lock, Unlock, User } from "lucide-react";
 import { geminiService } from "../services/geminiService";
 import { cn } from "../lib/utils";
 import { TaskModal } from "../components/TaskModal";
@@ -241,7 +241,14 @@ export const InitiativeDetail: React.FC = () => {
                   </span>
                 )}
               </div>
-              <p className="text-zinc-500 max-w-2xl mt-1">{initiative?.descripcion}</p>
+              {initiative?.responsable && (
+                <div className="flex items-center gap-2 text-sm text-zinc-600 mt-1">
+                  <User size={16} className="text-zinc-400" />
+                  <span className="font-medium">Responsable:</span>
+                  <span>{initiative.responsable}</span>
+                </div>
+              )}
+              <p className="text-zinc-500 max-w-2xl mt-2">{initiative?.descripcion}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
