@@ -18,6 +18,14 @@ service cloud.firestore {
       }
     }
 
+    match /projects/{projectId} {
+      allow read, write: if true;
+      
+      match /tasks/{taskId} {
+        allow read, write: if true;
+      }
+    }
+
     // Allow collectionGroup queries for tasks
     match /{path=**}/tasks/{taskId} {
       allow read: if true;

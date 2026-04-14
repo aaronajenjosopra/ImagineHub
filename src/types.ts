@@ -16,12 +16,23 @@ export interface Initiative {
   createdAt: string;
 }
 
+export interface Project {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  responsable?: string;
+  createdBy: string;
+  estado?: "active" | "closed";
+  createdAt: string;
+}
+
 export interface Task {
   id: string;
   titulo: string;
   descripcion: string;
   estado: "todo" | "in_progress" | "done";
-  iniciativaId: string;
+  iniciativaId?: string;
+  proyectoId?: string;
   creadorId: string;
   tags: string[];
   createdAt: string;
@@ -69,7 +80,7 @@ export interface News {
   id: string;
   titulo: string;
   descripcion: string;
-  tipo: "iniciativa" | "tarea" | "sesion" | "foro";
+  tipo: "iniciativa" | "tarea" | "sesion" | "foro" | "proyecto";
   referenciaId: string;
   usuarioId: string;
   createdAt: string;

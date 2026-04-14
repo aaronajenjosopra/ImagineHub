@@ -6,11 +6,10 @@ import {
   Rocket, 
   Mail, 
   Image as ImageIcon, 
-  Bell
+  Bell,
+  Briefcase
 } from "lucide-react";
 import { cn } from "../lib/utils";
-import sopraLogo from "../assets/sopra_logo.png";
-import aerolineLogo from "../assets/aeroline.png";
 
 const SidebarItem = ({ to, icon: Icon, label, active }: { to: string, icon: any, label: string, active: boolean }) => (
   <Link
@@ -34,8 +33,9 @@ export const Layout: React.FC = () => {
     { to: "/", icon: Home, label: "Home" },
     { to: "/calendar", icon: Calendar, label: "Calendario" },
     { to: "/initiatives", icon: Rocket, label: "Iniciativas" },
+    { to: "/projects", icon: Briefcase, label: "Proyectos" },
     { to: "/mailbox", icon: Mail, label: "Buzón" },
-    { to: "/imagine", icon: ImageIcon, label: "Imagine" },
+    { to: "/imagine", icon: ImageIcon, label: "Imagene V1" },
   ];
 
   return (
@@ -44,7 +44,7 @@ export const Layout: React.FC = () => {
       <aside className="w-64 border-r border-zinc-100 flex flex-col p-4 bg-zinc-50/50">
         <div className="flex items-center gap-2 px-4 mb-8">
           <div className="bg-zinc-900 text-white px-3 py-1 rounded-xl font-normal text-xl tracking-tight">
-            Imagine <span className="font-bold">Hub</span>
+            Imagene <span className="font-bold">Hub</span>
           </div>
         </div>
 
@@ -60,7 +60,7 @@ export const Layout: React.FC = () => {
 
         <div className="mt-auto pt-8 flex justify-center">
           <img 
-            src={sopraLogo} 
+            src="sopra_logo.png" 
             alt="Sopra Steria Logo" 
             className="h-8 object-contain opacity-60 hover:opacity-100 transition-opacity"
             referrerPolicy="no-referrer"
@@ -82,7 +82,7 @@ export const Layout: React.FC = () => {
             <div className="flex items-center gap-3">
               <div className="w-24 h-24 flex items-center justify-center overflow-hidden">
                 <img 
-                  src={aerolineLogo} 
+                  src="aeroline.png" 
                   alt="User Avatar" 
                   className="w-full h-full object-contain"
                   referrerPolicy="no-referrer"

@@ -1,0 +1,331 @@
+import React, { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { doc, collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, orderBy } from "firebase/firestore";
+import { db } from "../firebase";
+import { Project, Task } from "../types";
+import { Plus, Sparkles, ChevronLeft, Trash2, Loader2, Pencil, Lock, Unlock, User } from "lucide-react";
+import { geminiService } from "../services/geminiService";
+import { cn } from "../lib/utils";
+import { TaskModal } from "../components/TaskModal";
+
+const Column = ({ title, status, tasks, onMove, onAdd, onDelete, onGenerate, onEditTask }: any) => {
+  return (
+    <div className="flex-1 min-w-[300px] bg-zinc-50/50 rounded-2xl p-4 flex flex-col h-full border border-zinc-100">
+      <div className="flex items-center justify-between mb-4 px-2">
+        <div className="flex items-center gap-2">
+          <h3 className="font-bold text-sm uppercase tracking-wider text-zinc-500">{title}</h3>
+          <span className="bg-zinc-200 text-zinc-600 px-2 py-0.5 rounded-full text-xs font-bold">{tasks.length}</span>
+        </div>
+        {status === "todo" && (
+          <button onClick={onAdd} className="p-1 hover:bg-zinc-200 rounded-md transition-colors">
+            <Plus size={18} />
+          </button>
+        )}
+      </div>
+
+      <div className="flex-1 space-y-3 overflow-y-auto">
+        {tasks.map((task: Task) => (
+          <div 
+            key={task.id}
+            className="p-4 bg-white border border-zinc-100 rounded-xl shadow-sm hover:border-zinc-300 transition-all cursor-grab active:cursor-grabbing group"
+          >
+            <div className="flex justify-between items-start mb-2">
+              <h4 className="font-bold text-zinc-900 leading-tight">{task.titulo}</h4>
+              <div className="flex items-center gap-1 transition-all">
+                <button 
+                  onClick={() => onEditTask(task)}
+                  className="p-1 text-zinc-400 hover:text-blue-500"
+                  title="Editar tarea"
+                >
+                  <Pencil size={14} />
+                </button>
+                <button 
+                  onClick={() => onDelete(task.id)}
+                  className="p-1 text-zinc-400 hover:text-red-500"
+                  title="Eliminar tarea"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </div>
+            <p className="text-xs text-zinc-500 line-clamp-2 mb-4">{task.descripcion || "Sin descripción"}</p>
+            
+            {task.tags && task.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1 mb-4">
+                {task.tags.map((tag, i) => (
+                  <span key={i} className="px-1.5 py-0.5 bg-zinc-100 text-zinc-600 rounded text-[10px] font-medium border border-zinc-200">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between">
+              <div className="flex gap-1">
+                {status !== "todo" && (
+                  <button 
+                    onClick={() => onMove(task.id, status === "done" ? "in_progress" : "todo")}
+                    className="text-[10px] font-bold uppercase tracking-tighter px-2 py-1 bg-zinc-100 rounded hover:bg-zinc-200"
+                  >
+                    ←
+                  </button>
+                )}
+                {status !== "done" && (
+                  <button 
+                    onClick={() => onMove(task.id, status === "todo" ? "in_progress" : "done")}
+                    className="text-[10px] font-bold uppercase tracking-tighter px-2 py-1 bg-zinc-100 rounded hover:bg-zinc-200"
+                  >
+                    →
+                  </button>
+                )}
+              </div>
+              
+              {!task.descripcion && (
+                <button 
+                  onClick={() => onGenerate(task)}
+                  className="flex items-center gap-1 text-[10px] font-bold text-blue-600 hover:text-blue-700"
+                >
+                  <Sparkles size={10} /> AI DESC
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export const ProjectDetail: React.FC = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [project, setProject] = useState<Project | null>(null);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
+
+  useEffect(() => {
+    if (!id) return;
+
+    const unsubProject = onSnapshot(doc(db, "projects", id), (snap) => {
+      if (snap.exists()) {
+        setProject({ id: snap.id, ...snap.data() } as Project);
+      } else {
+        navigate("/projects");
+      }
+    });
+
+    const qTasks = query(collection(db, "projects", id, "tasks"), orderBy("createdAt", "asc"));
+    const unsubTasks = onSnapshot(qTasks, (snap) => {
+      setTasks(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task)));
+      setLoading(false);
+    });
+
+    return () => {
+      unsubProject();
+      unsubTasks();
+    };
+  }, [id, navigate]);
+
+  const handleAddTask = () => {
+    setTaskToEdit(null);
+    setIsTaskModalOpen(true);
+  };
+
+  const handleSaveTask = async (data: { titulo: string; descripcion: string; tags: string[] }) => {
+    if (!id) return;
+
+    if (taskToEdit) {
+      // Update existing
+      await updateDoc(doc(db, "projects", id, "tasks", taskToEdit.id), {
+        ...data,
+        updatedAt: new Date().toISOString(),
+      });
+    } else {
+      // Create new
+      await addDoc(collection(db, "projects", id, "tasks"), {
+        ...data,
+        estado: "todo",
+        proyectoId: id,
+        creadorId: "guest",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+
+      // News
+      await addDoc(collection(db, "news"), {
+        titulo: `Nueva tarea en ${project?.nombre}`,
+        descripcion: `Se ha añadido la tarea: ${data.titulo}`,
+        tipo: "tarea",
+        referenciaId: id,
+        usuarioId: "guest",
+        createdAt: new Date().toISOString(),
+      });
+    }
+  };
+
+  const handleMoveTask = async (taskId: string, newStatus: Task["estado"]) => {
+    if (!id) return;
+    const taskRef = doc(db, "projects", id, "tasks", taskId);
+    
+    await updateDoc(taskRef, {
+      estado: newStatus,
+      updatedAt: new Date().toISOString(),
+    });
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    if (!id || !taskId) return;
+    try {
+      await deleteDoc(doc(db, "projects", id, "tasks", taskId));
+      setIsTaskModalOpen(false);
+      setTaskToEdit(null);
+    } catch (error) {
+      console.error("Error deleting task:", error);
+    }
+  };
+
+  const handleGenerateDescription = async (task: Task) => {
+    if (!id || isGenerating) return;
+    setIsGenerating(true);
+    try {
+      const result = await geminiService.generateTaskDescription(task.titulo);
+      const fullDesc = `${result.descripcion}\n\n**Pasos:**\n${result.pasos.map((p: string) => `- ${p}`).join("\n")}\n\n**Documentación:**\n${result.documentacion}`;
+      
+      await updateDoc(doc(db, "projects", id, "tasks", task.id), {
+        descripcion: fullDesc,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("Error generating description:", error);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleEditTask = (task: Task) => {
+    setTaskToEdit(task);
+    setIsTaskModalOpen(true);
+  };
+
+  const handleToggleCloseProject = async () => {
+    if (!id || !project) return;
+    const newStatus = project.estado === "closed" ? "active" : "closed";
+    await updateDoc(doc(db, "projects", id), {
+      estado: newStatus,
+      updatedAt: new Date().toISOString(),
+    });
+  };
+
+  if (loading) return <div className="flex items-center justify-center h-full"><Loader2 className="animate-spin text-zinc-400" /></div>;
+
+  return (
+    <div className="h-full flex flex-col">
+      <div className="mb-8">
+        <button 
+          onClick={() => navigate("/projects")}
+          className="flex items-center gap-1 text-zinc-500 hover:text-zinc-900 mb-4 text-sm font-medium"
+        >
+          <ChevronLeft size={16} /> Volver a proyectos
+        </button>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div>
+              <div className="flex items-center gap-3">
+                <h2 className="text-3xl font-bold tracking-tight">{project?.nombre}</h2>
+                {project?.estado === "closed" && (
+                  <span className="flex items-center gap-1 px-2 py-1 bg-zinc-100 text-zinc-500 rounded-md text-xs font-bold uppercase border border-zinc-200">
+                    <Lock size={12} /> Cerrado
+                  </span>
+                )}
+              </div>
+              {project?.responsable && (
+                <div className="flex items-center gap-2 text-sm text-zinc-600 mt-1">
+                  <User size={16} className="text-zinc-400" />
+                  <span className="font-medium">Responsable:</span>
+                  <span>{project.responsable}</span>
+                </div>
+              )}
+              <p className="text-zinc-500 max-w-2xl mt-2">{project?.descripcion}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleToggleCloseProject}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all border",
+                project?.estado === "closed" 
+                  ? "bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50" 
+                  : "bg-zinc-900 text-white border-zinc-900 hover:bg-zinc-800"
+              )}
+            >
+              {project?.estado === "closed" ? (
+                <>
+                  <Unlock size={16} /> Reabrir Proyecto
+                </>
+              ) : (
+                <>
+                  <Lock size={16} /> Cerrar Proyecto
+                </>
+              )}
+            </button>
+            {isGenerating && (
+              <div className="flex items-center gap-2 text-blue-600 font-medium animate-pulse">
+                <Sparkles size={20} />
+                <span>IA Generando...</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className={cn(
+        "flex-1 flex gap-6 overflow-x-auto pb-4 transition-opacity",
+        project?.estado === "closed" && "opacity-60 pointer-events-none grayscale-[0.5]"
+      )}>
+        <Column 
+          title="Por hacer" 
+          status="todo" 
+          tasks={tasks.filter(t => t.estado === "todo")} 
+          onMove={handleMoveTask}
+          onAdd={handleAddTask}
+          onDelete={handleDeleteTask}
+          onGenerate={handleGenerateDescription}
+          onEditTask={handleEditTask}
+        />
+        <Column 
+          title="En progreso" 
+          status="in_progress" 
+          tasks={tasks.filter(t => t.estado === "in_progress")} 
+          onMove={handleMoveTask}
+          onDelete={handleDeleteTask}
+          onGenerate={handleGenerateDescription}
+          onEditTask={handleEditTask}
+        />
+        <Column 
+          title="Completado" 
+          status="done" 
+          tasks={tasks.filter(t => t.estado === "done")} 
+          onMove={handleMoveTask}
+          onDelete={handleDeleteTask}
+          onGenerate={handleGenerateDescription}
+          onEditTask={handleEditTask}
+        />
+      </div>
+
+      <TaskModal 
+        isOpen={isTaskModalOpen}
+        onClose={() => setIsTaskModalOpen(false)}
+        onSave={handleSaveTask}
+        onDelete={() => taskToEdit && handleDeleteTask(taskToEdit.id)}
+        initialData={taskToEdit ? {
+          titulo: taskToEdit.titulo,
+          descripcion: taskToEdit.descripcion || "",
+          tags: taskToEdit.tags || []
+        } : undefined}
+      />
+    </div>
+  );
+};

@@ -40,7 +40,7 @@ export const Imagine: React.FC = () => {
     <div className="max-w-5xl mx-auto">
       <div className="flex justify-between items-center mb-12">
         <div>
-          <h2 className="text-4xl font-black tracking-tight mb-2">Imagine Hub</h2>
+          <h2 className="text-4xl font-black tracking-tight mb-2">Imagene Hub</h2>
           <p className="text-zinc-500 text-lg">Contenido semanal, inspiración y visión de futuro.</p>
         </div>
         <button 
@@ -95,7 +95,7 @@ export const Imagine: React.FC = () => {
             <div className="max-w-3xl mx-auto px-8 h-20 flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <ImageIcon className="text-zinc-400" size={24} />
-                <span className="font-bold text-zinc-400 uppercase tracking-widest text-xs">Imagine Hub</span>
+                <span className="font-bold text-zinc-400 uppercase tracking-widest text-xs">Imagene Hub</span>
               </div>
               <button 
                 onClick={() => setSelectedPost(null)}

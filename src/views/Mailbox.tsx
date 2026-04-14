@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { collection, query, orderBy, onSnapshot, addDoc, updateDoc, doc } from "firebase/firestore";
 import { db } from "../firebase";
 import { Post, Response } from "../types";
-import { MessageSquare, Sparkles, Send, CheckCircle2, Clock, Plus } from "lucide-react";
+import { MessageSquare, Sparkles, Send, CheckCircle2, Clock, Plus, Search, X } from "lucide-react";
 import { geminiService } from "../services/geminiService";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
@@ -18,6 +18,7 @@ export const Mailbox: React.FC = () => {
   const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
   const [replyContent, setReplyContent] = useState("");
   const [responses, setResponses] = useState<Record<string, Response[]>>({});
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     const q = query(collection(db, "mailbox"), orderBy("createdAt", "desc"));
@@ -93,20 +94,45 @@ export const Mailbox: React.FC = () => {
     setActiveReplyId(null);
   };
 
+  const filteredPosts = posts.filter(post => 
+    post.titulo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    post.contenido.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Buzón de Colaboración</h2>
           <p className="text-zinc-500">Comparte problemas, ideas o dudas con el equipo.</p>
         </div>
-        <button 
-          onClick={() => setShowNewPost(true)}
-          className="flex items-center gap-2 bg-zinc-900 text-white px-4 py-2 rounded-lg hover:bg-zinc-800 transition-colors"
-        >
-          <Plus size={20} />
-          <span>Nuevo Post</span>
-        </button>
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <div className="relative flex-1 md:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+            <input 
+              type="text"
+              placeholder="Buscar propuestas..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-white border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/5 focus:border-zinc-900 transition-all"
+            />
+            {searchQuery && (
+              <button 
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+          <button 
+            onClick={() => setShowNewPost(true)}
+            className="flex items-center gap-2 bg-zinc-900 text-white px-4 py-2 rounded-lg hover:bg-zinc-800 transition-colors whitespace-nowrap"
+          >
+            <Plus size={20} />
+            <span>Nuevo Post</span>
+          </button>
+        </div>
       </div>
 
       <AnimatePresence>
@@ -180,7 +206,7 @@ export const Mailbox: React.FC = () => {
       </AnimatePresence>
 
       <div className="space-y-4">
-        {posts.map((post) => (
+        {filteredPosts.map((post) => (
           <div key={post.id} className="p-6 border border-zinc-100 rounded-2xl bg-white shadow-sm hover:border-zinc-200 transition-all">
             <div className="flex justify-between items-start mb-2">
               <h3 className="text-lg font-bold text-zinc-900">{post.titulo}</h3>

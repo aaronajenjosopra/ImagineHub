@@ -19,6 +19,20 @@
       "properties": {
         "nombre": { "type": "string" },
         "descripcion": { "type": "string" },
+        "responsable": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["nombre", "descripcion", "createdBy", "createdAt"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "A specific project",
+      "type": "object",
+      "properties": {
+        "nombre": { "type": "string" },
+        "descripcion": { "type": "string" },
+        "responsable": { "type": "string" },
         "createdBy": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
@@ -26,19 +40,20 @@
     },
     "Task": {
       "title": "Task",
-      "description": "A task within an initiative",
+      "description": "A task within an initiative or project",
       "type": "object",
       "properties": {
         "titulo": { "type": "string" },
         "descripcion": { "type": "string" },
         "estado": { "type": "string", "enum": ["todo", "in_progress", "done"] },
         "iniciativaId": { "type": "string" },
+        "proyectoId": { "type": "string" },
         "creadorId": { "type": "string" },
         "tags": { "type": "array", "items": { "type": "string" } },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["titulo", "estado", "iniciativaId", "creadorId", "tags", "createdAt", "updatedAt"]
+      "required": ["titulo", "estado", "creadorId", "tags", "createdAt", "updatedAt"]
     },
     "Session": {
       "title": "Session",
@@ -100,7 +115,7 @@
       "properties": {
         "titulo": { "type": "string" },
         "descripcion": { "type": "string" },
-        "tipo": { "type": "string", "enum": ["iniciativa", "tarea", "sesion", "foro"] },
+        "tipo": { "type": "string", "enum": ["iniciativa", "tarea", "sesion", "foro", "proyecto"] },
         "referenciaId": { "type": "string" },
         "usuarioId": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
@@ -112,6 +127,8 @@
     "/users/{userId}": { "schema": "User", "description": "User profiles" },
     "/initiatives/{initiativeId}": { "schema": "Initiative", "description": "Company initiatives" },
     "/initiatives/{initiativeId}/tasks/{taskId}": { "schema": "Task", "description": "Tasks for an initiative" },
+    "/projects/{projectId}": { "schema": "Project", "description": "Company projects" },
+    "/projects/{projectId}/tasks/{taskId}": { "schema": "Task", "description": "Tasks for a project" },
     "/sessions/{sessionId}": { "schema": "Session", "description": "Calendar sessions" },
     "/mailbox/{postId}": { "schema": "Post", "description": "Mailbox posts" },
     "/mailbox/{postId}/responses/{responseId}": { "schema": "Response", "description": "Responses to posts" },
