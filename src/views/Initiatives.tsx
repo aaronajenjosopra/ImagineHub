@@ -37,6 +37,7 @@ export const Initiatives: React.FC = () => {
     } else {
       const docRef = await addDoc(collection(db, "initiatives"), {
         ...initData,
+        estado: "active",
         createdBy: "guest",
         createdAt: new Date().toISOString(),
       });

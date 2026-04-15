@@ -20,7 +20,9 @@ const NewsIcon = ({ type }: { type: News["tipo"] }) => {
 
 export const Dashboard: React.FC = () => {
   const [news, setNews] = useState<News[]>([]);
-  const [initiatives, setInitiatives] = useState<Initiative[]>([]);
+  const [latestInitiatives, setLatestInitiatives] = useState<Initiative[]>([]);
+  const [activeInitiativesCount, setActiveInitiativesCount] = useState<number>(0);
+  const [activeProjectsCount, setActiveProjectsCount] = useState<number>(0);
   const [activeTasksCount, setActiveTasksCount] = useState<number>(0);
   const [upcomingSessionsCount, setUpcomingSessionsCount] = useState<number>(0);
 
@@ -30,9 +32,21 @@ export const Dashboard: React.FC = () => {
       setNews(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as News)));
     });
 
-    const qInit = query(collection(db, "initiatives"), orderBy("createdAt", "desc"), limit(3));
-    const unsubInit = onSnapshot(qInit, (snap) => {
-      setInitiatives(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Initiative)));
+    const qLatestInit = query(collection(db, "initiatives"), orderBy("createdAt", "desc"), limit(3));
+    const unsubLatestInit = onSnapshot(qLatestInit, (snap) => {
+      setLatestInitiatives(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Initiative)));
+    });
+
+    // Count active initiatives (treating missing estado as active)
+    const unsubActiveInit = onSnapshot(collection(db, "initiatives"), (snap) => {
+      const activeCount = snap.docs.filter(doc => doc.data().estado !== "closed").length;
+      setActiveInitiativesCount(activeCount);
+    });
+
+    // Count active projects (treating missing estado as active)
+    const unsubActiveProj = onSnapshot(collection(db, "projects"), (snap) => {
+      const activeCount = snap.docs.filter(doc => doc.data().estado !== "closed").length;
+      setActiveProjectsCount(activeCount);
     });
 
     // Count in-progress tasks across all initiatives using collectionGroup
@@ -56,7 +70,9 @@ export const Dashboard: React.FC = () => {
 
     return () => {
       unsubNews();
-      unsubInit();
+      unsubLatestInit();
+      unsubActiveInit();
+      unsubActiveProj();
       unsubTasks();
       unsubSessions();
     };
@@ -75,7 +91,7 @@ export const Dashboard: React.FC = () => {
               </Link>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {initiatives.map((init) => (
+              {latestInitiatives.map((init) => (
                 <Link 
                   key={init.id} 
                   to={`/initiatives/${init.id}`}
@@ -93,7 +109,7 @@ export const Dashboard: React.FC = () => {
                   </div>
                 </Link>
               ))}
-              {initiatives.length === 0 && (
+              {latestInitiatives.length === 0 && (
                 <div className="col-span-2 p-8 border border-dashed border-zinc-200 rounded-xl text-center text-zinc-500">
                   No hay iniciativas activas. ¡Crea la primera!
                 </div>
@@ -139,7 +155,11 @@ export const Dashboard: React.FC = () => {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-zinc-400">Iniciativas activas</span>
-                <span className="font-bold">{initiatives.length}</span>
+                <span className="font-bold">{activeInitiativesCount}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-zinc-400">Proyectos activos</span>
+                <span className="font-bold">{activeProjectsCount}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-zinc-400">Tareas en curso</span>

@@ -37,6 +37,7 @@ export const Projects: React.FC = () => {
     } else {
       const docRef = await addDoc(collection(db, "projects"), {
         ...projectData,
+        estado: "active",
         createdBy: "guest",
         createdAt: new Date().toISOString(),
       });
