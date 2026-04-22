@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, updateDoc, collectionGroup } from "firebase/firestore";
 import { db } from "../firebase";
-import { Initiative } from "../types";
-import { Rocket, Plus, Search, Calendar, Trash2, Pencil, User, X } from "lucide-react";
+import { Initiative, Task } from "../types";
+import { Rocket, Plus, Search, Calendar, Trash2, Pencil, User, X, CheckCircle2, Clock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
 export const Initiatives: React.FC = () => {
   const [initiatives, setInitiatives] = useState<Initiative[]>([]);
+  const [taskCounts, setTaskCounts] = useState<Record<string, { todo: number, in_progress: number }>>({});
   const [showModal, setShowModal] = useState(false);
   const [editingInit, setEditingInit] = useState<Initiative | null>(null);
   const [newInit, setNewInit] = useState({ nombre: "", descripcion: "", responsable: "" });
@@ -19,7 +20,27 @@ export const Initiatives: React.FC = () => {
     const unsub = onSnapshot(q, (snap) => {
       setInitiatives(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Initiative)));
     });
-    return () => unsub();
+
+    const qTasks = query(collectionGroup(db, "tasks"));
+    const unsubTasks = onSnapshot(qTasks, (snap) => {
+      const counts: Record<string, { todo: number, in_progress: number }> = {};
+      snap.docs.forEach(doc => {
+        const data = doc.data() as Task;
+        if (data.iniciativaId) {
+          if (!counts[data.iniciativaId]) {
+            counts[data.iniciativaId] = { todo: 0, in_progress: 0 };
+          }
+          if (data.estado === "todo") counts[data.iniciativaId].todo++;
+          if (data.estado === "in_progress") counts[data.iniciativaId].in_progress++;
+        }
+      });
+      setTaskCounts(counts);
+    });
+
+    return () => {
+      unsub();
+      unsubTasks();
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -127,6 +148,17 @@ export const Initiatives: React.FC = () => {
             <Link to={`/initiatives/${init.id}`} className="flex-1">
               <p className="text-zinc-500 text-sm line-clamp-3 mb-4">{init.descripcion}</p>
               
+              <div className="flex gap-4 mb-4">
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-50 rounded-lg border border-amber-100">
+                  <Clock size={14} className="text-amber-500" />
+                  <span className="text-xs font-bold text-amber-700">{taskCounts[init.id]?.todo || 0} To Do</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-blue-50 rounded-lg border border-blue-100">
+                  <Rocket size={14} className="text-blue-500" />
+                  <span className="text-xs font-bold text-blue-700">{taskCounts[init.id]?.in_progress || 0} En Progreso</span>
+                </div>
+              </div>
+
               {init.responsable && (
                 <div className="flex items-center gap-2 text-xs text-zinc-600 mb-4 bg-zinc-50 px-2 py-1.5 rounded-lg w-fit">
                   <User size={14} className="text-zinc-400" />

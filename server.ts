@@ -44,8 +44,12 @@ async function startServer() {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
+  // Detect environment
+  const distPath = path.join(process.cwd(), "dist");
+  const isProd = process.env.NODE_ENV === "production" || fs.existsSync(path.join(distPath, "index.html"));
+
   // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
+  if (!isProd) {
     console.log("Initializing Vite server...");
     const vite = await createViteServer({
       server: { 
@@ -57,10 +61,23 @@ async function startServer() {
     console.log("Vite server initialized.");
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
+    console.log("Running in Production mode. Serving static files from:", distPath);
+    // Serve static assets first
+    app.use(express.static(distPath, { index: false }));
+    
+    // Fallback all other routes to index.html for SPA routing
     app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
+      // Don't fallback API routes
+      if (req.path.startsWith("/api/")) {
+        return res.status(404).json({ error: "API route not found" });
+      }
+      
+      const indexPath = path.join(distPath, "index.html");
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        res.status(500).send("Build artifact (index.html) missing. Please run 'npm run build'.");
+      }
     });
   }
 
