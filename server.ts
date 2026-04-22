@@ -45,8 +45,8 @@ async function startServer() {
   });
 
   // Detect environment
+  const isProd = process.env.NODE_ENV === "production";
   const distPath = path.join(process.cwd(), "dist");
-  const isProd = process.env.NODE_ENV === "production" || fs.existsSync(path.join(distPath, "index.html"));
 
   // Vite middleware for development
   if (!isProd) {
