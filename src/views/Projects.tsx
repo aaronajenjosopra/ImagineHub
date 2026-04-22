@@ -1,11 +1,142 @@
 import React, { useEffect, useState } from "react";
-import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, updateDoc, collectionGroup } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, updateDoc, collectionGroup, writeBatch } from "firebase/firestore";
 import { db } from "../firebase";
 import { Project, Task } from "../types";
-import { Briefcase, Plus, Search, Calendar, Trash2, Pencil, User, X, Clock, Rocket } from "lucide-react";
+import { Briefcase, Plus, Search, Calendar, Trash2, Pencil, User, X, Clock, Rocket, GripVertical } from "lucide-react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
+const SortableProjectCard = ({ project, taskCounts, handleEdit, setShowDeleteConfirm, showDeleteConfirm, handleDelete }: any) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: project.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : "auto",
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div 
+      ref={setNodeRef}
+      style={style}
+      className="group p-6 border border-zinc-100 rounded-2xl bg-white shadow-sm hover:shadow-md hover:border-zinc-200 transition-all flex flex-col h-full relative"
+    >
+      <div className="flex justify-between items-start mb-4">
+        <div className="flex items-center gap-3">
+          <button 
+            {...attributes} 
+            {...listeners}
+            className="text-zinc-300 hover:text-zinc-500 cursor-grab active:cursor-grabbing"
+          >
+            <GripVertical size={20} />
+          </button>
+          <div className="p-2.5 bg-zinc-100 text-zinc-900 rounded-xl group-hover:bg-zinc-900 group-hover:text-white transition-colors">
+            <Briefcase size={24} />
+          </div>
+          <h3 className="text-lg font-bold leading-tight">{project.nombre}</h3>
+        </div>
+        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
+          <button 
+            onClick={() => handleEdit(project)}
+            className="p-1.5 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg"
+            title="Editar"
+          >
+            <Pencil size={16} />
+          </button>
+          <button 
+            onClick={() => setShowDeleteConfirm(project.id)}
+            className="p-1.5 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+            title="Eliminar"
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
+      </div>
+      
+      <Link to={`/projects/${project.id}`} className="flex-1">
+        <p className="text-zinc-500 text-sm line-clamp-3 mb-4">{project.descripcion}</p>
+        
+        <div className="flex gap-4 mb-4">
+          <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-50 rounded-lg border border-amber-100">
+            <Clock size={14} className="text-amber-500" />
+            <span className="text-xs font-bold text-amber-700">{taskCounts[project.id]?.todo || 0} To Do</span>
+          </div>
+          <div className="flex items-center gap-1.5 px-2 py-1 bg-blue-50 rounded-lg border border-blue-100">
+            <Rocket size={14} className="text-blue-500" />
+            <span className="text-xs font-bold text-blue-700">{taskCounts[project.id]?.in_progress || 0} En Progreso</span>
+          </div>
+        </div>
+
+        {project.responsable && (
+          <div className="flex items-center gap-2 text-xs text-zinc-600 mb-4 bg-zinc-50 px-2 py-1.5 rounded-lg w-fit">
+            <User size={14} className="text-zinc-400" />
+            <span className="font-medium">Responsable:</span>
+            <span>{project.responsable}</span>
+          </div>
+        )}
+      </Link>
+
+      <div className="flex items-center justify-between pt-4 border-t border-zinc-50 text-xs text-zinc-400">
+        <div className="flex items-center gap-1">
+          <Calendar size={14} />
+          <span>{format(new Date(project.createdAt), "d MMM, yyyy", { locale: es })}</span>
+        </div>
+        <Link to={`/projects/${project.id}`} className="font-medium text-zinc-900 hover:underline">
+          Ver detalles →
+        </Link>
+      </div>
+
+      {showDeleteConfirm === project.id && (
+        <div className="absolute inset-0 bg-white/95 rounded-2xl flex items-center justify-center p-6 z-10 animate-in fade-in zoom-in duration-200">
+          <div className="text-center">
+            <p className="font-bold text-zinc-900 mb-1">¿Eliminar proyecto?</p>
+            <p className="text-xs text-zinc-500 mb-4">Esta acción no se puede deshacer.</p>
+            <div className="flex gap-2 justify-center">
+              <button 
+                onClick={() => setShowDeleteConfirm(null)}
+                className="px-4 py-1.5 text-xs font-medium border border-zinc-200 rounded-lg hover:bg-zinc-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={() => handleDelete(project.id)}
+                className="px-4 py-1.5 text-xs font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm"
+              >
+                Sí, eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const Projects: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -15,10 +146,25 @@ export const Projects: React.FC = () => {
   const [newProject, setNewProject] = useState({ nombre: "", descripcion: "", responsable: "" });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
   useEffect(() => {
     const q = query(collection(db, "projects"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, (snap) => {
-      setProjects(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project)));
+      const projList = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
+      // Client-side sort to ensure projects without 'orden' aren't hidden
+      projList.sort((a, b) => {
+        const orderA = a.orden ?? Number.MAX_SAFE_INTEGER;
+        const orderB = b.orden ?? Number.MAX_SAFE_INTEGER;
+        if (orderA !== orderB) return orderA - orderB;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(); // desc
+      });
+      setProjects(projList);
     });
 
     const qTasks = query(collectionGroup(db, "tasks"));
@@ -43,6 +189,24 @@ export const Projects: React.FC = () => {
     };
   }, []);
 
+  const onDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = projects.findIndex(p => p.id === active.id);
+    const newIndex = projects.findIndex(p => p.id === over.id);
+
+    const newProjects = arrayMove(projects, oldIndex, newIndex);
+    setProjects(newProjects);
+
+    const batch = writeBatch(db);
+    newProjects.forEach((proj, index) => {
+      batch.update(doc(db, "projects", proj.id), { orden: index });
+    });
+
+    await batch.commit();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -56,11 +220,14 @@ export const Projects: React.FC = () => {
     if (editingProject) {
       await updateDoc(doc(db, "projects", editingProject.id), projectData);
     } else {
+      const maxOrder = projects.length > 0 ? Math.max(...projects.map(p => p.orden || 0)) : 0;
+      
       const docRef = await addDoc(collection(db, "projects"), {
         ...projectData,
         estado: "active",
         createdBy: "guest",
         createdAt: new Date().toISOString(),
+        orden: maxOrder + 1,
       });
 
       // Create news
@@ -114,96 +281,30 @@ export const Projects: React.FC = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {projects.map((project) => (
-          <div 
-            key={project.id} 
-            className="group p-6 border border-zinc-100 rounded-2xl bg-white shadow-sm hover:shadow-md hover:border-zinc-200 transition-all flex flex-col h-full relative"
+      <DndContext 
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={onDragEnd}
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <SortableContext 
+            items={projects.map(p => p.id)}
+            strategy={verticalListSortingStrategy}
           >
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-zinc-100 text-zinc-900 rounded-xl group-hover:bg-zinc-900 group-hover:text-white transition-colors">
-                  <Briefcase size={24} />
-                </div>
-                <h3 className="text-lg font-bold leading-tight">{project.nombre}</h3>
-              </div>
-              <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                <button 
-                  onClick={() => handleEdit(project)}
-                  className="p-1.5 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg"
-                  title="Editar"
-                >
-                  <Pencil size={16} />
-                </button>
-                <button 
-                  onClick={() => setShowDeleteConfirm(project.id)}
-                  className="p-1.5 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
-                  title="Eliminar"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            </div>
-            
-            <Link to={`/projects/${project.id}`} className="flex-1">
-              <p className="text-zinc-500 text-sm line-clamp-3 mb-4">{project.descripcion}</p>
-              
-              <div className="flex gap-4 mb-4">
-                <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-50 rounded-lg border border-amber-100">
-                  <Clock size={14} className="text-amber-500" />
-                  <span className="text-xs font-bold text-amber-700">{taskCounts[project.id]?.todo || 0} To Do</span>
-                </div>
-                <div className="flex items-center gap-1.5 px-2 py-1 bg-blue-50 rounded-lg border border-blue-100">
-                  <Rocket size={14} className="text-blue-500" />
-                  <span className="text-xs font-bold text-blue-700">{taskCounts[project.id]?.in_progress || 0} En Progreso</span>
-                </div>
-              </div>
-
-              {project.responsable && (
-                <div className="flex items-center gap-2 text-xs text-zinc-600 mb-4 bg-zinc-50 px-2 py-1.5 rounded-lg w-fit">
-                  <User size={14} className="text-zinc-400" />
-                  <span className="font-medium">Responsable:</span>
-                  <span>{project.responsable}</span>
-                </div>
-              )}
-            </Link>
-
-            <div className="flex items-center justify-between pt-4 border-t border-zinc-50 text-xs text-zinc-400">
-              <div className="flex items-center gap-1">
-                <Calendar size={14} />
-                <span>{format(new Date(project.createdAt), "d MMM, yyyy", { locale: es })}</span>
-              </div>
-              <Link to={`/projects/${project.id}`} className="font-medium text-zinc-900 hover:underline">
-                Ver detalles →
-              </Link>
-            </div>
-
-            {/* Delete Confirmation Overlay */}
-            {showDeleteConfirm === project.id && (
-              <div className="absolute inset-0 bg-white/95 rounded-2xl flex items-center justify-center p-6 z-10 animate-in fade-in zoom-in duration-200">
-                <div className="text-center">
-                  <p className="font-bold text-zinc-900 mb-1">¿Eliminar proyecto?</p>
-                  <p className="text-xs text-zinc-500 mb-4">Esta acción no se puede deshacer.</p>
-                  <div className="flex gap-2 justify-center">
-                    <button 
-                      onClick={() => setShowDeleteConfirm(null)}
-                      className="px-4 py-1.5 text-xs font-medium border border-zinc-200 rounded-lg hover:bg-zinc-50 transition-colors"
-                    >
-                      Cancelar
-                    </button>
-                    <button 
-                      onClick={() => handleDelete(project.id)}
-                      className="px-4 py-1.5 text-xs font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm"
-                    >
-                      Sí, eliminar
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+            {projects.map((project) => (
+              <SortableProjectCard 
+                key={project.id}
+                project={project}
+                taskCounts={taskCounts}
+                handleEdit={handleEdit}
+                setShowDeleteConfirm={setShowDeleteConfirm}
+                showDeleteConfirm={showDeleteConfirm}
+                handleDelete={handleDelete}
+              />
+            ))}
+          </SortableContext>
+        </div>
+      </DndContext>
 
       {showModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">

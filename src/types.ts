@@ -14,6 +14,7 @@ export interface Initiative {
   createdBy: string;
   estado?: "active" | "closed";
   createdAt: string;
+  orden?: number;
 }
 
 export interface Project {
@@ -24,6 +25,7 @@ export interface Project {
   createdBy: string;
   estado?: "active" | "closed";
   createdAt: string;
+  orden?: number;
 }
 
 export interface Task {
@@ -37,6 +39,7 @@ export interface Task {
   tags: string[];
   createdAt: string;
   updatedAt: string;
+  orden?: number;
 }
 
 export interface Session {

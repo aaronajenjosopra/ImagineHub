@@ -1,12 +1,125 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { doc, collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, orderBy } from "firebase/firestore";
+import { doc, collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, orderBy, writeBatch } from "firebase/firestore";
 import { db } from "../firebase";
 import { Initiative, Task } from "../types";
-import { Plus, Sparkles, ChevronLeft, Trash2, Loader2, Pencil, Lock, Unlock, User } from "lucide-react";
+import { Plus, Sparkles, ChevronLeft, Trash2, Loader2, Pencil, Lock, Unlock, User, GripVertical } from "lucide-react";
 import { geminiService } from "../services/geminiService";
 import { cn } from "../lib/utils";
 import { TaskModal } from "../components/TaskModal";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
+const SortableTaskCard = ({ task, status, onMove, onDelete, onGenerate, onEditTask }: any) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: task.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : "auto",
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div 
+      ref={setNodeRef}
+      style={style}
+      className="p-4 bg-white border border-zinc-100 rounded-xl shadow-sm hover:border-zinc-300 transition-all group relative"
+    >
+      <div className="flex justify-between items-start mb-2">
+        <div className="flex items-start gap-2 flex-1">
+          <button 
+            {...attributes} 
+            {...listeners}
+            className="mt-1 text-zinc-300 hover:text-zinc-500 cursor-grab active:cursor-grabbing"
+          >
+            <GripVertical size={16} />
+          </button>
+          <h4 className="font-bold text-zinc-900 leading-tight">{task.titulo}</h4>
+        </div>
+        <div className="flex items-center gap-1 transition-all">
+          <button 
+            onClick={() => onEditTask(task)}
+            className="p-1 text-zinc-400 hover:text-blue-500"
+            title="Editar tarea"
+          >
+            <Pencil size={14} />
+          </button>
+          <button 
+            onClick={() => onDelete(task.id)}
+            className="p-1 text-zinc-400 hover:text-red-500"
+            title="Eliminar tarea"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      </div>
+      <p className="text-xs text-zinc-500 line-clamp-2 mb-4 ml-6">{task.descripcion || "Sin descripción"}</p>
+      
+      {task.tags && task.tags.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-4 ml-6">
+          {task.tags.map((tag: string, i: number) => (
+            <span key={i} className="px-1.5 py-0.5 bg-zinc-100 text-zinc-600 rounded text-[10px] font-medium border border-zinc-200">
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <div className="flex items-center justify-between ml-6">
+        <div className="flex gap-1">
+          {status !== "todo" && (
+            <button 
+              onClick={() => onMove(task.id, status === "done" ? "in_progress" : "todo")}
+              className="text-[10px] font-bold uppercase tracking-tighter px-2 py-1 bg-zinc-100 rounded hover:bg-zinc-200"
+            >
+              ←
+            </button>
+          )}
+          {status !== "done" && (
+            <button 
+              onClick={() => onMove(task.id, status === "todo" ? "in_progress" : "done")}
+              className="text-[10px] font-bold uppercase tracking-tighter px-2 py-1 bg-zinc-100 rounded hover:bg-zinc-200"
+            >
+              →
+            </button>
+          )}
+        </div>
+        
+        {!task.descripcion && (
+          <button 
+            onClick={() => onGenerate(task)}
+            className="flex items-center gap-1 text-[10px] font-bold text-blue-600 hover:text-blue-700"
+          >
+            <Sparkles size={10} /> AI DESC
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const Column = ({ title, status, tasks, onMove, onAdd, onDelete, onGenerate, onEditTask }: any) => {
   return (
@@ -24,73 +137,22 @@ const Column = ({ title, status, tasks, onMove, onAdd, onDelete, onGenerate, onE
       </div>
 
       <div className="flex-1 space-y-3 overflow-y-auto">
-        {tasks.map((task: Task) => (
-          <div 
-            key={task.id}
-            className="p-4 bg-white border border-zinc-100 rounded-xl shadow-sm hover:border-zinc-300 transition-all cursor-grab active:cursor-grabbing group"
-          >
-            <div className="flex justify-between items-start mb-2">
-              <h4 className="font-bold text-zinc-900 leading-tight">{task.titulo}</h4>
-              <div className="flex items-center gap-1 transition-all">
-                <button 
-                  onClick={() => onEditTask(task)}
-                  className="p-1 text-zinc-400 hover:text-blue-500"
-                  title="Editar tarea"
-                >
-                  <Pencil size={14} />
-                </button>
-                <button 
-                  onClick={() => onDelete(task.id)}
-                  className="p-1 text-zinc-400 hover:text-red-500"
-                  title="Eliminar tarea"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            </div>
-            <p className="text-xs text-zinc-500 line-clamp-2 mb-4">{task.descripcion || "Sin descripción"}</p>
-            
-            {task.tags && task.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1 mb-4">
-                {task.tags.map((tag, i) => (
-                  <span key={i} className="px-1.5 py-0.5 bg-zinc-100 text-zinc-600 rounded text-[10px] font-medium border border-zinc-200">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            <div className="flex items-center justify-between">
-              <div className="flex gap-1">
-                {status !== "todo" && (
-                  <button 
-                    onClick={() => onMove(task.id, status === "done" ? "in_progress" : "todo")}
-                    className="text-[10px] font-bold uppercase tracking-tighter px-2 py-1 bg-zinc-100 rounded hover:bg-zinc-200"
-                  >
-                    ←
-                  </button>
-                )}
-                {status !== "done" && (
-                  <button 
-                    onClick={() => onMove(task.id, status === "todo" ? "in_progress" : "done")}
-                    className="text-[10px] font-bold uppercase tracking-tighter px-2 py-1 bg-zinc-100 rounded hover:bg-zinc-200"
-                  >
-                    →
-                  </button>
-                )}
-              </div>
-              
-              {!task.descripcion && (
-                <button 
-                  onClick={() => onGenerate(task)}
-                  className="flex items-center gap-1 text-[10px] font-bold text-blue-600 hover:text-blue-700"
-                >
-                  <Sparkles size={10} /> AI DESC
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
+        <SortableContext 
+          items={tasks.map((t: Task) => t.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          {tasks.map((task: Task) => (
+            <SortableTaskCard 
+              key={task.id}
+              task={task}
+              status={status}
+              onMove={onMove}
+              onDelete={onDelete}
+              onGenerate={onGenerate}
+              onEditTask={onEditTask}
+            />
+          ))}
+        </SortableContext>
       </div>
     </div>
   );
@@ -106,6 +168,13 @@ export const InitiativeDetail: React.FC = () => {
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
 
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
   useEffect(() => {
     if (!id) return;
 
@@ -119,7 +188,15 @@ export const InitiativeDetail: React.FC = () => {
 
     const qTasks = query(collection(db, "initiatives", id, "tasks"), orderBy("createdAt", "asc"));
     const unsubTasks = onSnapshot(qTasks, (snap) => {
-      setTasks(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task)));
+      const taskList = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
+      // Client-side sort to ensure tasks without 'orden' aren't hidden
+      taskList.sort((a, b) => {
+        const orderA = a.orden ?? Number.MAX_SAFE_INTEGER;
+        const orderB = b.orden ?? Number.MAX_SAFE_INTEGER;
+        if (orderA !== orderB) return orderA - orderB;
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      });
+      setTasks(taskList);
       setLoading(false);
     });
 
@@ -138,23 +215,24 @@ export const InitiativeDetail: React.FC = () => {
     if (!id) return;
 
     if (taskToEdit) {
-      // Update existing
       await updateDoc(doc(db, "initiatives", id, "tasks", taskToEdit.id), {
         ...data,
         updatedAt: new Date().toISOString(),
       });
     } else {
-      // Create new
-      await addDoc(collection(db, "initiatives", id, "tasks"), {
+      // Find max order
+      const maxOrder = tasks.length > 0 ? Math.max(...tasks.map(t => t.orden || 0)) : 0;
+      
+      const docRef = await addDoc(collection(db, "initiatives", id, "tasks"), {
         ...data,
         estado: "todo",
         iniciativaId: id,
         creadorId: "guest",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        orden: maxOrder + 1,
       });
 
-      // News
       await addDoc(collection(db, "news"), {
         titulo: `Nueva tarea en ${initiative?.nombre}`,
         descripcion: `Se ha añadido la tarea: ${data.titulo}`,
@@ -174,6 +252,31 @@ export const InitiativeDetail: React.FC = () => {
       estado: newStatus,
       updatedAt: new Date().toISOString(),
     });
+  };
+
+  const onDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !id) return;
+
+    const activeTask = tasks.find(t => t.id === active.id);
+    const overTask = tasks.find(t => t.id === over.id);
+
+    if (!activeTask || !overTask || activeTask.estado !== overTask.estado) return;
+
+    const columnTasks = tasks.filter(t => t.estado === activeTask.estado);
+    const oldIndex = columnTasks.findIndex(t => t.id === active.id);
+    const newIndex = columnTasks.findIndex(t => t.id === over.id);
+
+    const newColumnTasks = arrayMove(columnTasks, oldIndex, newIndex);
+    
+    // Update orders in Firestore
+    const batch = writeBatch(db);
+    newColumnTasks.forEach((task, index) => {
+      const taskRef = doc(db, "initiatives", id, "tasks", task.id);
+      batch.update(taskRef, { orden: index });
+    });
+
+    await batch.commit();
   };
 
   const handleDeleteTask = async (taskId: string) => {
@@ -281,39 +384,45 @@ export const InitiativeDetail: React.FC = () => {
         </div>
       </div>
 
-      <div className={cn(
-        "flex-1 flex gap-6 overflow-x-auto pb-4 transition-opacity",
-        initiative?.estado === "closed" && "opacity-60 pointer-events-none grayscale-[0.5]"
-      )}>
-        <Column 
-          title="Por hacer" 
-          status="todo" 
-          tasks={tasks.filter(t => t.estado === "todo")} 
-          onMove={handleMoveTask}
-          onAdd={handleAddTask}
-          onDelete={handleDeleteTask}
-          onGenerate={handleGenerateDescription}
-          onEditTask={handleEditTask}
-        />
-        <Column 
-          title="En progreso" 
-          status="in_progress" 
-          tasks={tasks.filter(t => t.estado === "in_progress")} 
-          onMove={handleMoveTask}
-          onDelete={handleDeleteTask}
-          onGenerate={handleGenerateDescription}
-          onEditTask={handleEditTask}
-        />
-        <Column 
-          title="Completado" 
-          status="done" 
-          tasks={tasks.filter(t => t.estado === "done")} 
-          onMove={handleMoveTask}
-          onDelete={handleDeleteTask}
-          onGenerate={handleGenerateDescription}
-          onEditTask={handleEditTask}
-        />
-      </div>
+      <DndContext 
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={onDragEnd}
+      >
+        <div className={cn(
+          "flex-1 flex gap-6 overflow-x-auto pb-4 transition-opacity",
+          initiative?.estado === "closed" && "opacity-60 pointer-events-none grayscale-[0.5]"
+        )}>
+          <Column 
+            title="Por hacer" 
+            status="todo" 
+            tasks={tasks.filter(t => t.estado === "todo")} 
+            onMove={handleMoveTask}
+            onAdd={handleAddTask}
+            onDelete={handleDeleteTask}
+            onGenerate={handleGenerateDescription}
+            onEditTask={handleEditTask}
+          />
+          <Column 
+            title="En progreso" 
+            status="in_progress" 
+            tasks={tasks.filter(t => t.estado === "in_progress")} 
+            onMove={handleMoveTask}
+            onDelete={handleDeleteTask}
+            onGenerate={handleGenerateDescription}
+            onEditTask={handleEditTask}
+          />
+          <Column 
+            title="Completado" 
+            status="done" 
+            tasks={tasks.filter(t => t.estado === "done")} 
+            onMove={handleMoveTask}
+            onDelete={handleDeleteTask}
+            onGenerate={handleGenerateDescription}
+            onEditTask={handleEditTask}
+          />
+        </div>
+      </DndContext>
 
       <TaskModal 
         isOpen={isTaskModalOpen}
